@@ -1,7 +1,5 @@
 ---
 title: "Types of weather events which are most harmful to population health and economic activities across the US."
-author: "Talal Fazmin"
-date: "09/08/2020"
 output: html_document
 ---
 
@@ -9,7 +7,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Synopsis
+## Synopsis
 The purpose of this assignment is to analyse and report on which type of weather events in the US, based on the NOAA Storm Database, are most harmful with respect to population health and economic activities.
 
 This analysis used the following packages:
@@ -21,7 +19,7 @@ require(dplyr)
 require(ggplot2)
 ```
 
-# Data processing
+## Data processing
 
 Data was downloaded from the URL provided in the course material and loaded into a daframe structure using the read.csv function. This function allows for reading even if the csv is compressed in a bz2 format. The code below demonstrates how the data was read:
 
@@ -39,11 +37,140 @@ stormdata <- read.csv("stormdata.csv.bz2")
 evtype <- stormdata$EVTYPE %>% as.factor()
 fatalities <- stormdata$FATALITIES %>% as.numeric()
 injuries <- stormdata$INJURIES %>% as.numeric()
+propdmg <- stormdata$PROPDMG
+cropdmg <- stormdata$CROPDMG
+totaldmg <- propdmg+cropdmg
 ```
 
-## Analysis of population health impacts of natural weather events
+### Calculation of new variables
 
-This analysis was based on the fatality and injury numbers of each weather event type (evtype).
+The analysis of population health impact was based on the fatality and injury numbers of each weather event type (evtype). The analysis of economic impact was assessed through the combination of property damage and crop damage.
 
-The code used to perform this analysis is as follows:
+The code used to perform this analysis is as follows. First the necessary variables (fatalities, event types and frequencies of events) are extracted and then combined in a new dataset (summarydata) which will be used for analysis.
 
+```{r message=FALSE}
+#make dataframe for use in analysis
+df <- data.frame(evtype,fatalities,injuries,totaldmg) %>% 
+        as_tibble() %>%
+        group_by(evtype)
+
+# get a list of event types and their frequencies
+events <- table(df$evtype) %>%
+        data.frame %>%
+        as_tibble()
+
+names(events)[1] <- "evtype"
+
+# summarise data by event type
+summarydata <- summarise(df,
+                         total_fatl = sum(fatalities),
+                         mean_fatl = mean(fatalities),
+                         total_inj = sum(injuries),
+                         mean_inj = mean(injuries),
+                         total_dmg = sum(totaldmg),
+                         mean_dmg = mean(totaldmg))
+
+# merge event type summaries with event type frequencies
+summarydata <- merge(events, summarydata, by = "evtype")
+```
+
+### Analysis of population health impacts of natural weather events
+
+Next, weather events are sorted by either total fatalities per event, or by the mean number of fatalities per event.
+
+```{r message=FALSE}
+# sort by total fatality count and print top 5
+sumdata1 <- summarydata %>%
+        arrange(desc(total_fatl)) %>%
+        select(evtype,Freq,total_fatl,mean_fatl)
+
+# sort by total injury count and print top 5
+sumdata2 <- summarydata %>%
+        arrange(desc(total_inj)) %>%
+        select(evtype,Freq,total_inj,mean_inj)
+```
+
+### Analysis of economic impact
+
+For economic impact, crop damage and property damage are combined and then the dataset of events is arranged by descending order of total damage.
+
+```{r message=FALSE}
+# sort by total damage
+sumdata3 <- summarydata %>%
+        arrange(desc(total_dmg)) %>%
+        select(evtype,Freq,total_dmg,mean_dmg)
+```
+
+## Results
+
+### Impact of weather events on population health
+
+The top ten weather events based on total fatalities are given below. As you can see, tornados cause the most amount of fatalities in total, but this seems to be driven by the fact that they are also one of the most frequent events at 60,652 events. On average, however, they aren't very dangerous - only 0.093 fatalities per tornado event.
+
+```{r message=FALSE}
+# show top 10 fatal weather events
+
+head(sumdata1, 10)
+```
+
+The top ten weather events based on total injuries are given below. Unsurprisingly, tornados cause the most amount of injuries in total.
+
+```{r message=FALSE}
+# show top 10 injurious weather events
+
+head(sumdata2, 10)
+```
+
+Figure 1: This plot show the total fatalities caused by the top five fatal weather events
+
+```{r}
+sumdata1 <- slice_max(sumdata1, order_by = total_fatl, n=5)
+
+ggplot(data = sumdata1,
+       aes(x = reorder(evtype, -total_fatl), y = total_fatl)) +
+        geom_bar(stat="identity") +
+        theme(axis.text.x = element_text(angle = 45, vjust = 0.9, hjust=1)) +
+        labs(title = "Total fatalities per event type") +
+        xlab("Event type") +
+        ylab("Number of fatalities")
+```
+
+Figure 2: This plot show the total injuries caused by the top five injurious weather events
+
+```{r}
+# plot data by total number of injuries
+sumdata2 <- slice_max(sumdata2, order_by = total_inj, n=5)
+
+ggplot(data = sumdata2,
+       aes(x = reorder(evtype, -total_inj), y = total_inj)) +
+        geom_bar(stat="identity") +
+        theme(axis.text.x = element_text(angle = 45, vjust = 0.9, hjust=1)) +
+        labs(title = "Total injuries per event type") +
+        xlab("Event type") +
+        ylab("Number of injuries")
+```
+
+### Impact of weather events on economic damage
+
+The top ten weather events by total economic damage (proprty damage + crop damage) are given below. Tornados seem to be the biggest source of damage again, perhaps due to their frequency.
+
+```{r message=FALSE}
+# show top 10 fatal weather events
+
+head(sumdata3, 10)
+```
+
+Figure 3: This figure shows the top five weather events by total economic damage.
+
+```{r}
+# plot data by total economic damage
+sumdata3 <- slice_max(sumdata3, order_by = total_dmg, n=5)
+
+ggplot(data = sumdata3,
+       aes(x = reorder(evtype, -total_dmg), y = total_dmg)) +
+        geom_bar(stat="identity") +
+        theme(axis.text.x = element_text(angle = 45, vjust = 0.9, hjust=1)) +
+        labs(title = "Total economic damage per event type") +
+        xlab("Event type") +
+        ylab("Economic impact, dollars")
+```
