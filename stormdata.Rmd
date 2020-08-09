@@ -1,0 +1,49 @@
+---
+title: "Types of weather events which are most harmful to population health and economic activities across the US."
+author: "Talal Fazmin"
+date: "09/08/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Synopsis
+The purpose of this assignment is to analyse and report on which type of weather events in the US, based on the NOAA Storm Database, are most harmful with respect to population health and economic activities.
+
+This analysis used the following packages:
+
+```{r message=FALSE}
+#load required packages
+require(tidyverse)
+require(dplyr)
+require(ggplot2)
+```
+
+# Data processing
+
+Data was downloaded from the URL provided in the course material and loaded into a daframe structure using the read.csv function. This function allows for reading even if the csv is compressed in a bz2 format. The code below demonstrates how the data was read:
+
+```{r cache=TRUE}
+#download and read data
+ifelse(!file.exists("stormdata.csv.bz2"),
+   download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2",
+                 destfile =  "stormdata.csv.bz2",
+                 method = "curl"),
+   print("data file found"))
+
+stormdata <- read.csv("stormdata.csv.bz2")
+
+#extract needed variables
+evtype <- stormdata$EVTYPE %>% as.factor()
+fatalities <- stormdata$FATALITIES %>% as.numeric()
+injuries <- stormdata$INJURIES %>% as.numeric()
+```
+
+## Analysis of population health impacts of natural weather events
+
+This analysis was based on the fatality and injury numbers of each weather event type (evtype).
+
+The code used to perform this analysis is as follows:
+
